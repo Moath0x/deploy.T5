@@ -1,4 +1,5 @@
 streamlit
-CV2
+opencv-contrib-python
+opencv-python
 datetime
 streamlit_webrtc
