@@ -1,4 +1,4 @@
 streamlit
-cv2
+CV2
 datetime
 streamlit_webrtc
