@@ -1,18 +1,22 @@
 import streamlit as st
-import cv2
 from datetime import datetime
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+from streamlit_webrtc import webrtc_streamer
+from streamlit_server_state import server_state, server_state_lock
 
 # إعداد جلسة Streamlit
 st.set_page_config(page_title="الفصل الافتراضي", layout="wide")
 
-# متغيرات الجلسة
+# متغيرات الجلسة المحلية
 if "role" not in st.session_state:
     st.session_state["role"] = None
 if "name" not in st.session_state:
     st.session_state["name"] = None
-if "session_started" not in st.session_state:
-    st.session_state["session_started"] = False
+
+# متغيرات الجلسة المشتركة
+if "session_started" not in server_state:
+    server_state["session_started"] = False
+if "chat_messages" not in server_state:
+    server_state["chat_messages"] = []
 
 # وظيفة لاستخدام كاميرا الويب
 def use_camera():
@@ -38,18 +42,27 @@ def teacher_dashboard():
     st.sidebar.header(f"مرحبًا، {st.session_state['name']} (معلم)")
 
     if st.sidebar.button("بدء جلسة"):
-        st.session_state["session_started"] = True
+        with server_state_lock["session_started"]:
+            server_state["session_started"] = True
         st.sidebar.success("الجلسة بدأت")
-    
-    if st.session_state["session_started"]:
+
+    if server_state["session_started"]:
         st.write("الجلسة جارية...")
         use_camera()
-    
-    # دردشة نصية
+
+    # الدردشة النصية
     st.sidebar.subheader("الدردشة")
     chat_message = st.sidebar.text_input("أدخل رسالتك:")
     if st.sidebar.button("إرسال"):
-        st.sidebar.write(f"{datetime.now().strftime('%H:%M:%S')} - {chat_message}")
+        if chat_message:
+            timestamp = datetime.now().strftime('%H:%M:%S')
+            with server_state_lock["chat_messages"]:
+                server_state["chat_messages"].append(f"{timestamp} - {st.session_state['name']}: {chat_message}")
+            st.experimental_rerun()
+
+    st.sidebar.write("الدردشة:")
+    for message in server_state["chat_messages"]:
+        st.sidebar.write(message)
 
     # العرض الرئيسي
     st.title("مرحبًا بكم في لوحة إدارة الفصل الافتراضي")
@@ -60,17 +73,25 @@ def student_dashboard():
     st.sidebar.title("لوحة التحكم")
     st.sidebar.header(f"مرحبًا، {st.session_state['name']} (طالب)")
 
-    if st.session_state["session_started"]:
+    if server_state["session_started"]:
         st.sidebar.info("الجلسة جارية، يمكنك الانضمام.")
         use_camera()
     else:
         st.sidebar.warning("لا توجد جلسة جارية حالياً.")
 
-    # دردشة نصية
+    # الدردشة النصية
     st.sidebar.subheader("الدردشة")
     chat_message = st.sidebar.text_input("أدخل رسالتك:")
     if st.sidebar.button("إرسال"):
-        st.sidebar.write(f"{datetime.now().strftime('%H:%M:%S')} - {chat_message}")
+        if chat_message:
+            timestamp = datetime.now().strftime('%H:%M:%S')
+            with server_state_lock["chat_messages"]:
+                server_state["chat_messages"].append(f"{timestamp} - {st.session_state['name']}: {chat_message}")
+            st.experimental_rerun()
+
+    st.sidebar.write("الدردشة:")
+    for message in server_state["chat_messages"]:
+        st.sidebar.write(message)
 
     # العرض الرئيسي
     st.title("مرحبًا بكم في الفصل الافتراضي")
