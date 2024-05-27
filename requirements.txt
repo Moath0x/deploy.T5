@@ -4,3 +4,5 @@ opencv-python
 datetime
 streamlit_webrtc
 streamlit-server-state
+imutils
+numpy
